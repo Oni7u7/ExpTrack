@@ -26,3 +26,4 @@ CREATE POLICY "Anyone can register" ON usuarios
 
 
 
+

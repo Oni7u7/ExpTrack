@@ -47,3 +47,4 @@ export const addCategoria = async (nombre, descripcion) => {
 };
 
 
+

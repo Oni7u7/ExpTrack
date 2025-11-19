@@ -244,3 +244,4 @@ Para mejorar la aplicación, considera:
 - [Expo Documentation](https://docs.expo.dev/)
 
 
+
