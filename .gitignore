@@ -39,3 +39,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Config files (local only)
+app.config.js
+CONFIGURACION_TABLAS.md
+setup_database.sql
+SUPABASE_SETUP.md
