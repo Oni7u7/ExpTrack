@@ -14,6 +14,14 @@ import { getLimiteActual } from '../services/limitesService';
 import { getCategorias, addCategoria } from '../services/categoriasService';
 import { colors } from '../config/colors';
 
+// Función auxiliar para formatear fecha en formato YYYY-MM-DD usando hora local
+const formatDateLocal = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Categorías predefinidas
 const CATEGORIAS_PREDEFINIDAS = [
   { id: 'comida', nombre: 'Comida' },
@@ -23,21 +31,25 @@ const CATEGORIAS_PREDEFINIDAS = [
   { id: 'salud', nombre: 'Salud' },
 ];
 
-export default function GastosTab({ userId }) {
+export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }) {
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [categoriaId, setCategoriaId] = useState(null);
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [limite, setLimite] = useState(null);
+  const [fecha, setFecha] = useState(formatDateLocal(new Date()));
   const [loading, setLoading] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoriasMap, setCategoriasMap] = useState({});
 
   useEffect(() => {
-    loadLimite();
-    initializeCategorias();
-  }, [userId]);
+    if (visible && userId) {
+      initializeCategorias();
+      // Resetear formulario cuando se abre
+      setMonto('');
+      setDescripcion('');
+      setCategoriaId(null);
+      setFecha(formatDateLocal(new Date()));
+    }
+  }, [visible, userId]);
 
   // Inicializar categorías en la base de datos
   const initializeCategorias = async () => {
@@ -68,11 +80,6 @@ export default function GastosTab({ userId }) {
     } catch (error) {
       console.error('Error al inicializar categorías:', error);
     }
-  };
-
-  const loadLimite = async () => {
-    const { data } = await getLimiteActual(userId);
-    setLimite(data);
   };
 
   const handleSubmit = async () => {
@@ -116,7 +123,7 @@ export default function GastosTab({ userId }) {
       }
     }
 
-    const { data, error } = await addGasto(
+    const { data, error, limiteRebasado } = await addGasto(
       userId,
       categoriaIdParaBD,
       monto,
@@ -129,69 +136,62 @@ export default function GastosTab({ userId }) {
     if (error) {
       Alert.alert('Error', error);
     } else {
-      Alert.alert('Éxito', 'Gasto agregado correctamente', [
-        {
-          text: 'OK',
-          onPress: () => {
-            setMonto('');
-            setDescripcion('');
-            setCategoriaId(null);
-            setFecha(new Date().toISOString().split('T')[0]);
-            setShowModal(false);
+      // Si se rebasó el límite, mostrar notificación especial
+      if (limiteRebasado) {
+        Alert.alert(
+          '⚠️ Límite Excedido',
+          'Has superado el límite de gastos establecido. Te recomendamos revisar tus gastos y ajustar tu presupuesto.',
+          [
+            {
+              text: 'Entendido',
+              onPress: () => {
+                setMonto('');
+                setDescripcion('');
+                setCategoriaId(null);
+                setFecha(formatDateLocal(new Date()));
+                onClose();
+                if (onGastoAdded) {
+                  onGastoAdded();
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Éxito', 'Gasto agregado correctamente', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setMonto('');
+              setDescripcion('');
+              setCategoriaId(null);
+              setFecha(new Date().toISOString().split('T')[0]);
+              onClose();
+              if (onGastoAdded) {
+                onGastoAdded();
+              }
+            },
           },
-        },
-      ]);
+        ]);
+      }
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-    }).format(amount);
+  const handleClose = () => {
+    setMonto('');
+    setDescripcion('');
+    setCategoriaId(null);
+    setFecha(formatDateLocal(new Date()));
+    onClose();
   };
 
   return (
     <>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        <Text style={styles.title}>Agregar Gasto</Text>
-
-        {limite && (
-          <View style={styles.limiteCard}>
-            <Text style={styles.limiteTitle}>Límite Actual</Text>
-            <Text style={styles.limiteMonto}>{formatCurrency(limite.monto_limite)}</Text>
-            <Text style={styles.limiteGasto}>
-              Gastado: {formatCurrency(limite.gasto_total || 0)}
-            </Text>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${Math.min(
-                      ((limite.gasto_total || 0) / limite.monto_limite) * 100,
-                      100
-                    )}%`,
-                  },
-                ]}
-              />
-            </View>
-          </View>
-        )}
-
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setShowModal(true)}
-        >
-          <Text style={styles.addButtonText}>+ Agregar Nuevo Gasto</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
       <Modal
-        visible={showModal}
+        visible={visible}
         animationType="slide"
         transparent={true}
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={handleClose}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -298,7 +298,7 @@ export default function GastosTab({ userId }) {
               <View style={styles.modalButtons}>
                 <TouchableOpacity
                   style={[styles.modalButton, styles.cancelButton]}
-                  onPress={() => setShowModal(false)}
+                  onPress={handleClose}
                 >
                   <Text style={styles.cancelButtonText}>Cancelar</Text>
                 </TouchableOpacity>
@@ -386,74 +386,6 @@ export default function GastosTab({ userId }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  contentContainer: {
-    padding: 20,
-    paddingTop: 80,
-    paddingBottom: 100,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: colors.textPrimary,
-  },
-  limiteCard: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors['900'],
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  limiteTitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  limiteMonto: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  limiteGasto: {
-    fontSize: 14,
-    color: colors.textTertiary,
-    marginBottom: 8,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: colors.borderLight,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 4,
-  },
-  addButton: {
-    backgroundColor: colors.buttonPrimary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  addButtonText: {
-    color: colors.buttonPrimaryText,
-    fontSize: 16,
-    fontWeight: '600',
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

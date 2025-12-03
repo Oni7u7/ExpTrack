@@ -8,6 +8,9 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { registerUser } from '../services/authService';
 import { colors } from '../config/colors';
@@ -91,110 +94,123 @@ export default function RegisterScreen({ onRegisterSuccess, onNavigateToLogin })
     confirmPassword.trim() !== '';
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../assets/images/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Crear Cuenta</Text>
-
-      <TextInput
-        style={[styles.input, errors.nombre && styles.inputError]}
-        placeholder="Nombre"
-        value={nombre}
-        onChangeText={(text) => {
-          setNombre(text);
-          if (errors.nombre) {
-            setErrors({ ...errors, nombre: null });
-          }
-        }}
-        autoCapitalize="words"
-      />
-      {errors.nombre && <Text style={styles.errorText}>{errors.nombre}</Text>}
-
-      <TextInput
-        style={[styles.input, errors.email && styles.inputError]}
-        placeholder="Email"
-        value={email}
-        onChangeText={(text) => {
-          setEmail(text);
-          if (errors.email) {
-            setErrors({ ...errors, email: null });
-          }
-        }}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="email"
-      />
-      {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-
-      <TextInput
-        style={[styles.input, errors.password && styles.inputError]}
-        placeholder="Contraseña"
-        value={password}
-        onChangeText={(text) => {
-          setPassword(text);
-          // Limpiar error de password y confirmPassword cuando se cambia
-          const newErrors = { ...errors };
-          if (newErrors.password) delete newErrors.password;
-          if (newErrors.confirmPassword && text === confirmPassword) {
-            delete newErrors.confirmPassword;
-          }
-          setErrors(newErrors);
-        }}
-        secureTextEntry
-        autoCapitalize="none"
-        autoComplete="password"
-      />
-      {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-
-      <TextInput
-        style={[styles.input, errors.confirmPassword && styles.inputError]}
-        placeholder="Confirmar Contraseña"
-        value={confirmPassword}
-        onChangeText={(text) => {
-          setConfirmPassword(text);
-          if (errors.confirmPassword) {
-            setErrors({ ...errors, confirmPassword: null });
-          }
-        }}
-        secureTextEntry
-        autoCapitalize="none"
-      />
-      {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
-
-      <TouchableOpacity
-        style={[
-          styles.button,
-          (!isFormValid || loading) && styles.buttonDisabled
-        ]}
-        onPress={handleRegister}
-        disabled={!isFormValid || loading}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Registrarse</Text>
-        )}
-      </TouchableOpacity>
+        <Image source={require('../assets/images/logo.png')} style={styles.logo} />
+        <Text style={styles.title}>Crear Cuenta</Text>
 
-      <TouchableOpacity
-        style={styles.linkButton}
-        onPress={onNavigateToLogin}
-        disabled={loading}
-      >
-        <Text style={styles.linkText}>
-          ¿Ya tienes cuenta? <Text style={styles.linkTextBold}>Inicia Sesión</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
+        <TextInput
+          style={[styles.input, errors.nombre && styles.inputError]}
+          placeholder="Nombre"
+          value={nombre}
+          onChangeText={(text) => {
+            setNombre(text);
+            if (errors.nombre) {
+              setErrors({ ...errors, nombre: null });
+            }
+          }}
+          autoCapitalize="words"
+        />
+        {errors.nombre && <Text style={styles.errorText}>{errors.nombre}</Text>}
+
+        <TextInput
+          style={[styles.input, errors.email && styles.inputError]}
+          placeholder="Email"
+          value={email}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (errors.email) {
+              setErrors({ ...errors, email: null });
+            }
+          }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+        <TextInput
+          style={[styles.input, errors.password && styles.inputError]}
+          placeholder="Contraseña"
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            // Limpiar error de password y confirmPassword cuando se cambia
+            const newErrors = { ...errors };
+            if (newErrors.password) delete newErrors.password;
+            if (newErrors.confirmPassword && text === confirmPassword) {
+              delete newErrors.confirmPassword;
+            }
+            setErrors(newErrors);
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete="password"
+        />
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+
+        <TextInput
+          style={[styles.input, errors.confirmPassword && styles.inputError]}
+          placeholder="Confirmar Contraseña"
+          value={confirmPassword}
+          onChangeText={(text) => {
+            setConfirmPassword(text);
+            if (errors.confirmPassword) {
+              setErrors({ ...errors, confirmPassword: null });
+            }
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+        {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            (!isFormValid || loading) && styles.buttonDisabled
+          ]}
+          onPress={handleRegister}
+          disabled={!isFormValid || loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Registrarse</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={onNavigateToLogin}
+          disabled={loading}
+        >
+          <Text style={styles.linkText}>
+            ¿Ya tienes cuenta? <Text style={styles.linkTextBold}>Inicia Sesión</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: colors.background,
   },
   title: {
     fontSize: 28,

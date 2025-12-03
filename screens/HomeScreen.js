@@ -1,13 +1,40 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { logoutUser } from '../services/authService';
 import { colors } from '../config/colors';
 import HistorialTab from '../components/HistorialTab';
-import GastosTab from '../components/GastosTab';
 import ChatbotTab from '../components/ChatbotTab';
+import HomeTab from '../components/HomeTab';
+import LimiteTab from '../components/LimiteTab';
+import RecompensasTab from '../components/RecompensasTab';
+import AddGastoModal from '../components/AddGastoModal';
+import { getRecompensas } from '../services/recompensasService';
 
 export default function HomeScreen({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('Home');
+  const [showAddGastoModal, setShowAddGastoModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [avatarDesbloqueado, setAvatarDesbloqueado] = useState(false);
+
+  // Verificar si el usuario tiene el avatar desbloqueado
+  useEffect(() => {
+    const checkAvatar = async () => {
+      if (user?.id) {
+        const { data: recompensas } = await getRecompensas(user.id);
+        if (recompensas) {
+          const tieneAvatar = recompensas.some(r => r.semana === 'desbloqueo_avatar_bajo_btr');
+          setAvatarDesbloqueado(tieneAvatar);
+        }
+      }
+    };
+    checkAvatar();
+  }, [user?.id, refreshKey]);
+
+  // Función para actualizar cuando se compre un avatar
+  const handleAvatarUpdated = () => {
+    setRefreshKey(prev => prev + 1);
+  };
 
   const handleLogout = async () => {
     Alert.alert(
@@ -27,13 +54,26 @@ export default function HomeScreen({ user, onLogout }) {
     );
   };
 
+  const handleGastoAdded = () => {
+    // Forzar actualización de los tabs que necesitan recargarse
+    setRefreshKey(prev => prev + 1);
+  };
+
   const renderContent = () => {
-    if (activeTab === 'Historial') {
-      return <HistorialTab key={activeTab} userId={user?.id} />;
+    if (activeTab === 'Home') {
+      return <HomeTab key={`${activeTab}-${refreshKey}`} userId={user?.id} />;
     }
 
-    if (activeTab === 'Gastos') {
-      return <GastosTab userId={user?.id} />;
+    if (activeTab === 'Historial') {
+      return <HistorialTab key={`${activeTab}-${refreshKey}`} userId={user?.id} />;
+    }
+
+    if (activeTab === 'Límite') {
+      return <LimiteTab key={`${activeTab}-${refreshKey}`} userId={user?.id} />;
+    }
+
+    if (activeTab === 'Recompensas') {
+      return <RecompensasTab key={`${activeTab}-${refreshKey}`} userId={user?.id} onAvatarUpdated={handleAvatarUpdated} />;
     }
 
     if (activeTab === 'Chatbot') {
@@ -41,10 +81,57 @@ export default function HomeScreen({ user, onLogout }) {
     }
 
     if (activeTab === 'Perfil') {
+      // Obtener iniciales del nombre
+      const getInitials = (name) => {
+        if (!name) return 'U';
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) {
+          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
+      };
+
+      // Generar color basado en el nombre del usuario (sin modificar BD)
+      const getAvatarColor = (name) => {
+        if (!name) return colors.buttonPrimary;
+        const colorsList = [
+          '#5B715B', // Verde principal
+          '#768B77', // Verde claro
+          '#48594A', // Verde oscuro
+          '#9DAF9D', // Verde medio claro
+          '#3C493D', // Verde muy oscuro
+          '#5B7A8C', // Azul verdoso
+          '#7A8B6B', // Verde oliva
+          '#6B8B7A', // Verde azulado
+        ];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+          hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return colorsList[Math.abs(hash) % colorsList.length];
+      };
+
+      const avatarColor = getAvatarColor(user?.nombre);
+
       return (
-        <View style={styles.content} contentContainerStyle={styles.profileContent}>
-          
-          
+        <ScrollView style={styles.content} contentContainerStyle={styles.profileContent}>
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarContainer}>
+              <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
+                {avatarDesbloqueado ? (
+                  <Image 
+                    source={require('../assets/images/bajo-btr.png')} 
+                    style={styles.avatarImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <Text style={styles.avatarText}>{getInitials(user?.nombre)}</Text>
+                )}
+              </View>
+            </View>
+          </View>
+
           <View style={styles.profileCard}>
             <View style={styles.profileField}>
               <Text style={styles.profileLabel}>Nombre</Text>
@@ -60,51 +147,161 @@ export default function HomeScreen({ user, onLogout }) {
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       );
     }
 
-    // Contenido por defecto (Home)
-    return (
-      <View style={styles.content}>
-        <Text style={styles.title}>Bienvenido a ExpTrack</Text>
-        <Text style={styles.subtitle}>Hola, {user?.nombre || 'Usuario'}</Text>
-        <Text style={styles.email}>{user?.email}</Text>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
-        </TouchableOpacity>
-      </View>
-    );
+    return null;
   };
 
-  const tabs = ['Home', 'Historial', 'Perfil', 'Gastos', 'Chatbot'];
+  const tabs = ['Home', 'Historial', 'Límite', 'Recompensas', 'Perfil', 'Chatbot'];
+
+  // Función para renderizar iconos SVG
+  const renderIcon = (tabName, isActive) => {
+    const iconColor = isActive ? colors.tabActive : colors.tabInactive;
+    const iconSize = 28;
+
+    switch (tabName) {
+      case 'Home':
+        return (
+          <Svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M3 12L5 10M5 10L12 3L19 10M5 10V20C5 20.5523 5.44772 21 6 21H9M19 10L21 12M19 10V20C19 20.5523 18.5523 21 18 21H15M9 21C9.55228 21 10 20.5523 10 20V16C10 15.4477 10.4477 15 11 15H13C13.5523 15 14 15.4477 14 16V20C14 20.5523 14.4477 21 15 21M9 21H15"
+              stroke={iconColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        );
+      case 'Historial':
+        return (
+          <Svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M12 8V12L15 15M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+              stroke={iconColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        );
+      case 'Límite':
+        return (
+          <Svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+              stroke={iconColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <Path
+              d="M12 8V12L14 14"
+              stroke={iconColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        );
+      case 'Recompensas':
+        return (
+          <Svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M11.049 2.927C11.349 2.006 12.651 2.006 12.951 2.927L14.469 7.601C14.603 8.012 14.987 8.291 15.42 8.291H20.335C21.304 8.291 21.706 9.531 20.923 10.101L17.029 12.948C16.693 13.188 16.554 13.618 16.688 14.029L18.206 18.703C18.506 19.624 17.451 20.369 16.668 19.799L12.774 16.952C12.438 16.712 11.562 16.712 11.226 16.952L7.332 19.799C6.549 20.369 5.494 19.624 5.794 18.703L7.312 14.029C7.446 13.618 7.307 13.188 6.971 12.948L3.077 10.101C2.294 9.531 2.696 8.291 3.665 8.291H8.58C9.013 8.291 9.397 8.012 9.531 7.601L11.049 2.927Z"
+              stroke={iconColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        );
+      case 'Perfil':
+        return (
+          <Svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21M16 7C16 9.20914 14.2091 11 12 11C9.79086 11 8 9.20914 8 7C8 4.79086 9.79086 3 12 3C14.2091 3 16 4.79086 16 7Z"
+              stroke={iconColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        );
+      case 'Chatbot':
+        return (
+          <Svg width={iconSize} height={iconSize} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M8 10H8.01M12 10H12.01M16 10H16.01M21 12C21 16.9706 16.9706 21 12 21C10.4601 21 9.02172 20.6335 7.74571 19.9765L3 21L4.02353 16.2543C3.36652 14.9783 3 13.5399 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+              stroke={iconColor}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <View style={styles.container}>
       {renderContent()}
 
       <View style={styles.tabBar}>
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tab,
-              activeTab === tab && styles.activeTab,
-            ]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text
+        {tabs.map((tab, index) => {
+          const isActive = activeTab === tab;
+          // Colocar el botón circular en el centro (después de Límite, antes de Recompensas)
+          const centerIndex = Math.floor(tabs.length / 2) - 1; // Índice 2 (Límite)
+          
+          // Si estamos en el índice antes del centro, agregar el botón circular después de este tab
+          if (index === centerIndex) {
+            return (
+              <React.Fragment key={`fragment-${tab}`}>
+                <TouchableOpacity
+                  key={tab}
+                  style={[
+                    styles.tab,
+                    isActive && styles.activeTab,
+                  ]}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  {renderIcon(tab, isActive)}
+                </TouchableOpacity>
+                {/* Botón circular para agregar gasto */}
+                <TouchableOpacity
+                  style={styles.addButtonCircle}
+                  onPress={() => setShowAddGastoModal(true)}
+                >
+                  <Text style={styles.addButtonText}>+</Text>
+                </TouchableOpacity>
+              </React.Fragment>
+            );
+          }
+          
+          return (
+            <TouchableOpacity
+              key={tab}
               style={[
-                styles.tabText,
-                activeTab === tab && styles.activeTabText,
+                styles.tab,
+                isActive && styles.activeTab,
               ]}
+              onPress={() => setActiveTab(tab)}
             >
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              {renderIcon(tab, isActive)}
+            </TouchableOpacity>
+          );
+        })}
       </View>
+
+      <AddGastoModal
+        userId={user?.id}
+        visible={showAddGastoModal}
+        onClose={() => setShowAddGastoModal(false)}
+        onGastoAdded={handleGastoAdded}
+      />
     </View>
   );
 }
@@ -121,6 +318,39 @@ const styles = StyleSheet.create({
   },
   profileContent: {
     paddingBottom: 20,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: -50,
+    paddingTop: 20,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  avatarCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: colors.buttonPrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 4,
+    borderColor: colors.cardBackground,
+    shadowColor: colors['900'],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  avatarText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: colors.buttonPrimaryText,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 60,
   },
   profileTitle: {
     fontSize: 28,
@@ -205,30 +435,49 @@ const styles = StyleSheet.create({
   },
   tabBar: {
     flexDirection: 'row',
-    height: 60,
+    height: 80,
     backgroundColor: colors.tabBarBackground,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingBottom: 5,
+    paddingBottom: 10,
+    paddingTop: 8,
+    alignItems: 'center',
+    justifyContent: 'space-around',
   },
   tab: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
+    minWidth: 0,
   },
   activeTab: {
-    borderTopWidth: 2,
+    borderTopWidth: 3,
     borderTopColor: colors.tabActive,
   },
-  tabText: {
-    fontSize: 12,
-    color: colors.tabInactive,
-    fontWeight: '500',
+  addButtonCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.buttonPrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -8,
+    marginHorizontal: 4,
+    shadowColor: colors['900'],
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: colors.cardBackground,
+    flexShrink: 0,
   },
-  activeTabText: {
-    color: colors.tabActive,
-    fontWeight: '600',
+  addButtonText: {
+    fontSize: 32,
+    color: colors.buttonPrimaryText,
+    fontWeight: '300',
+    lineHeight: 32,
   },
 });
 

@@ -54,7 +54,7 @@ export default function HistorialTab({ userId }) {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            const { error } = await deleteGasto(gastoId);
+            const { error } = await deleteGasto(gastoId, userId);
             if (error) {
               Alert.alert('Error', error);
             } else {
@@ -67,7 +67,9 @@ export default function HistorialTab({ userId }) {
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
+    // Parsear la fecha directamente sin conversión a UTC para evitar desfases
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'short',

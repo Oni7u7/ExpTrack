@@ -8,6 +8,9 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { loginUser } from '../services/authService';
 import { colors } from '../config/colors';
@@ -71,77 +74,90 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToRegister }) {
   const isFormValid = email.trim() !== '' && password.trim() !== '';
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../assets/images/logo.png')} style={styles.logo} />
-      <Text style={styles.title}>Iniciar Sesión</Text>
-
-      <TextInput
-        style={[styles.input, errors.email && styles.inputError]}
-        placeholder="Email"
-        value={email}
-        onChangeText={(text) => {
-          setEmail(text);
-          if (errors.email) {
-            setErrors({ ...errors, email: null });
-          }
-        }}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="email"
-      />
-      {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-
-      <TextInput
-        style={[styles.input, errors.password && styles.inputError]}
-        placeholder="Contraseña"
-        value={password}
-        onChangeText={(text) => {
-          setPassword(text);
-          if (errors.password) {
-            setErrors({ ...errors, password: null });
-          }
-        }}
-        secureTextEntry
-        autoCapitalize="none"
-        autoComplete="password"
-      />
-      {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-
-      <TouchableOpacity
-        style={[
-          styles.button,
-          (!isFormValid || loading) && styles.buttonDisabled
-        ]}
-        onPress={handleLogin}
-        disabled={!isFormValid || loading}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Iniciar Sesión</Text>
-        )}
-      </TouchableOpacity>
+        <Image source={require('../assets/images/logo.png')} style={styles.logo} />
+        <Text style={styles.title}>Iniciar Sesión</Text>
 
-      <TouchableOpacity
-        style={styles.linkButton}
-        onPress={onNavigateToRegister}
-        disabled={loading}
-      >
-        <Text style={styles.linkText}>
-          ¿No tienes cuenta? <Text style={styles.linkTextBold}>Regístrate</Text>
-        </Text>
-      </TouchableOpacity>
-    </View>
+        <TextInput
+          style={[styles.input, errors.email && styles.inputError]}
+          placeholder="Email"
+          value={email}
+          onChangeText={(text) => {
+            setEmail(text);
+            if (errors.email) {
+              setErrors({ ...errors, email: null });
+            }
+          }}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoComplete="email"
+        />
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+        <TextInput
+          style={[styles.input, errors.password && styles.inputError]}
+          placeholder="Contraseña"
+          value={password}
+          onChangeText={(text) => {
+            setPassword(text);
+            if (errors.password) {
+              setErrors({ ...errors, password: null });
+            }
+          }}
+          secureTextEntry
+          autoCapitalize="none"
+          autoComplete="password"
+        />
+        {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            (!isFormValid || loading) && styles.buttonDisabled
+          ]}
+          onPress={handleLogin}
+          disabled={!isFormValid || loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Iniciar Sesión</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={onNavigateToRegister}
+          disabled={loading}
+        >
+          <Text style={styles.linkText}>
+            ¿No tienes cuenta? <Text style={styles.linkTextBold}>Regístrate</Text>
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: colors.background,
   },
   title: {
     fontSize: 28,

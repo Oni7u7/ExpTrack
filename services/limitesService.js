@@ -56,6 +56,25 @@ export const setLimite = async (userId, montoLimite, fechaInicio, fechaFin) => {
   }
 };
 
+// Obtener todos los límites de un usuario
+export const getAllLimites = async (userId) => {
+  try {
+    const { data, error } = await supabase
+      .from('limites')
+      .select('*')
+      .eq('user_id', userId)
+      .order('fecha_inicio', { ascending: false });
+
+    if (error) {
+      return { error: error.message, data: null };
+    }
+
+    return { data: data || [], error: null };
+  } catch (error) {
+    return { error: error.message || 'Error al obtener límites', data: null };
+  }
+};
+
 // Actualizar el gasto total de un límite
 export const updateGastoTotal = async (limiteId, gastoTotal) => {
   try {
@@ -75,6 +94,7 @@ export const updateGastoTotal = async (limiteId, gastoTotal) => {
     return { error: error.message || 'Error al actualizar gasto total', data: null };
   }
 };
+
 
 
 
