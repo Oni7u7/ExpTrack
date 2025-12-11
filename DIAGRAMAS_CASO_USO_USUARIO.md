@@ -394,23 +394,28 @@ graph TB
     Usuario --> UC23
     Usuario --> UC24
     
-    UC20 -->|Escribir| T1["gastos" o "cuánto gasté"]
+    UC20 -->|Escribir| T1["gastos o cuánto gasté"]
     T1 -->|Procesar| P2[Obtener gastos del usuario]
     P2 -->|Calcular| C7[Total, Promedio, Cantidad]
     C7 -->|Responder| R13[Resumen de gastos]
     
-    UC21 -->|Escribir| T2["límite" o "presupuesto"]
+    UC21 -->|Escribir| T2["límite o presupuesto"]
     T2 -->|Procesar| P3[Obtener límite activo]
     P3 -->|Calcular| C8[Porcentaje usado, Restante]
     C8 -->|Responder| R14[Estado del límite]
     
-    UC22 -->|Escribir| T3["consejos" o "ahorro"]
+    UC22 -->|Escribir| T3["consejos o ahorro"]
     T3 -->|Procesar| P4[Generar consejos personalizados]
     P4 -->|Responder| R15[Lista de consejos]
     
-    UC23 -->|Escribir| T4["análisis" o "estadísticas"]
+    UC23 -->|Escribir| T4["análisis o estadísticas"]
     T4 -->|Procesar| P5[Calcular estadísticas]
     P5 -->|Responder| R16[Análisis detallado]
+    
+    UC24 -->|Escribir| T5["recompensas o puntos"]
+    T5 -->|Procesar| P6[Obtener recompensas del usuario]
+    P6 -->|Calcular| C9[Puntos disponibles, Avatares]
+    C9 -->|Responder| R17[Resumen de recompensas]
     
     style Usuario fill:#5B715B,stroke:#333,stroke-width:2px,color:#fff
     style UC20 fill:#B2DFDB,stroke:#009688
@@ -473,4 +478,7 @@ graph TB
 
 **Última actualización**: 2024
 **Versión del documento**: 1.0
+
+
+
 
