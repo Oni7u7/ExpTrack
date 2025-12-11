@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image, Animated, RefreshControl } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { logoutUser } from '../services/authService';
 import { colors } from '../config/colors';
@@ -16,24 +16,89 @@ export default function HomeScreen({ user, onLogout }) {
   const [showAddGastoModal, setShowAddGastoModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [avatarDesbloqueado, setAvatarDesbloqueado] = useState(false);
+  const [avatarSeleccionado, setAvatarSeleccionado] = useState(null);
+  const [refreshingProfile, setRefreshingProfile] = useState(false);
+  const avatarSeleccionadoRef = useRef(null);
+  
+  // Referencias para las posiciones de los tabs
+  const tabPositions = useRef({});
+  const indicatorPosition = useRef(new Animated.Value(0)).current;
+  // Referencias para las animaciones de escala de los iconos
+  const iconScales = useRef({});
 
-  // Verificar si el usuario tiene el avatar desbloqueado
+  // Mapeo de IDs de avatares a sus imágenes
+  const avatarImages = {
+    'avatar_bajo_btr': require('../assets/images/bajo-btr.png'),
+    'avatar_miku-terr': require('../assets/images/miku-terr.png'),
+    'avatar_ellen-joe': require('../assets/images/ellen-zzz.png'),
+    'avatar_GI': require('../assets/images/gi.jpeg'),
+    'avatar_Yuji': require('../assets/images/yuji.jpeg'),
+    'avatar_ellen Chibi': require('../assets/images/elenchibi.jpeg'),
+  };
+
+  // Verificar si el usuario tiene avatares desbloqueados y cuál está seleccionado
   useEffect(() => {
     const checkAvatar = async () => {
       if (user?.id) {
         const { data: recompensas } = await getRecompensas(user.id);
         if (recompensas) {
-          const tieneAvatar = recompensas.some(r => r.semana === 'desbloqueo_avatar_bajo_btr');
+          // Buscar todos los avatares desbloqueados (cualquier recompensa que empiece con "desbloqueo_avatar_")
+          const avataresDesbloqueados = recompensas
+            .filter(r => r.semana?.startsWith('desbloqueo_avatar_'))
+            .map(r => r.semana.replace('desbloqueo_', ''));
+          
+          const tieneAvatar = avataresDesbloqueados.length > 0;
           setAvatarDesbloqueado(tieneAvatar);
+
+          // Usar el ref para obtener el valor actual del avatar seleccionado
+          const avatarActual = avatarSeleccionadoRef.current;
+
+          // Si hay avatares desbloqueados
+          if (avataresDesbloqueados.length > 0) {
+            // Si hay un avatar seleccionado y está en la lista de desbloqueados, mantenerlo
+            // Si no, usar el primero disponible
+            if (avatarActual && avataresDesbloqueados.includes(avatarActual)) {
+              setAvatarSeleccionado(avatarActual);
+              avatarSeleccionadoRef.current = avatarActual;
+            } else {
+              const primerDesbloqueado = avataresDesbloqueados[0];
+              setAvatarSeleccionado(primerDesbloqueado);
+              avatarSeleccionadoRef.current = primerDesbloqueado;
+            }
+          } else {
+            // Si no hay avatares desbloqueados, limpiar la selección
+            setAvatarSeleccionado(null);
+            avatarSeleccionadoRef.current = null;
+          }
         }
       }
     };
     checkAvatar();
   }, [user?.id, refreshKey]);
 
-  // Función para actualizar cuando se compre un avatar
-  const handleAvatarUpdated = () => {
+  // Función para actualizar cuando se compre o seleccione un avatar
+  const handleAvatarUpdated = (avatarId = null) => {
+    if (avatarId) {
+      // Actualizar estado inmediatamente y refrescar para asegurar que se muestre
+      setAvatarSeleccionado(avatarId);
+      avatarSeleccionadoRef.current = avatarId;
+      setAvatarDesbloqueado(true);
+      setRefreshKey(prev => prev + 1);
+    } else {
+      // Si no se pasa avatarId, solo refrescar (cuando se compra un avatar)
+      setRefreshKey(prev => prev + 1);
+    }
+  };
+
+  // Función para manejar el refresh del perfil
+  const onRefreshProfile = async () => {
+    setRefreshingProfile(true);
+    // Actualizar refreshKey para forzar la recarga de avatares
     setRefreshKey(prev => prev + 1);
+    // Esperar un momento para que se complete la actualización
+    setTimeout(() => {
+      setRefreshingProfile(false);
+    }, 500);
   };
 
   const handleLogout = async () => {
@@ -73,7 +138,7 @@ export default function HomeScreen({ user, onLogout }) {
     }
 
     if (activeTab === 'Recompensas') {
-      return <RecompensasTab key={`${activeTab}-${refreshKey}`} userId={user?.id} onAvatarUpdated={handleAvatarUpdated} />;
+      return <RecompensasTab key={`${activeTab}-${refreshKey}`} userId={user?.id} onAvatarUpdated={handleAvatarUpdated} avatarSeleccionado={avatarSeleccionado} />;
     }
 
     if (activeTab === 'Chatbot') {
@@ -114,14 +179,24 @@ export default function HomeScreen({ user, onLogout }) {
       const avatarColor = getAvatarColor(user?.nombre);
 
       return (
-        <ScrollView style={styles.content} contentContainerStyle={styles.profileContent}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.profileContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshingProfile}
+              onRefresh={onRefreshProfile}
+              tintColor={colors.buttonPrimary}
+            />
+          }
+        >
           {/* Avatar Section */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
               <View style={[styles.avatarCircle, { backgroundColor: avatarColor }]}>
-                {avatarDesbloqueado ? (
+                {avatarDesbloqueado && avatarSeleccionado && avatarImages[avatarSeleccionado] ? (
                   <Image 
-                    source={require('../assets/images/bajo-btr.png')} 
+                    source={avatarImages[avatarSeleccionado]} 
                     style={styles.avatarImage}
                     resizeMode="cover"
                   />
@@ -155,11 +230,73 @@ export default function HomeScreen({ user, onLogout }) {
   };
 
   const tabs = ['Home', 'Historial', 'Límite', 'Recompensas', 'Perfil', 'Chatbot'];
+  
+  // Función para guardar la posición de un tab
+  const saveTabPosition = (tabName, x, width) => {
+    tabPositions.current[tabName] = {
+      x: x + width / 2 - 20, // Centrar el indicador (ancho del indicador es 40, así que -20)
+      width: width,
+    };
+    
+    // Si es el tab activo, animar inmediatamente
+    if (tabName === activeTab) {
+      animateIndicator(tabName);
+    }
+  };
+  
+  // Función para animar el indicador cuando cambia el tab
+  const animateIndicator = (tabName) => {
+    const position = tabPositions.current[tabName];
+    if (position) {
+      Animated.timing(indicatorPosition, {
+        toValue: position.x,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+  
+  // Efecto para animar el indicador cuando cambia el tab activo
+  useEffect(() => {
+    animateIndicator(activeTab);
+  }, [activeTab]);
+  
+  // Función para obtener o crear la animación de escala para un tab
+  const getIconScale = (tabName) => {
+    if (!iconScales.current[tabName]) {
+      iconScales.current[tabName] = new Animated.Value(1);
+    }
+    return iconScales.current[tabName];
+  };
+
+  // Función para animar el cambio de tamaño del icono
+  const animateIconScale = (tabName, isActive) => {
+    const scale = getIconScale(tabName);
+    Animated.spring(scale, {
+      toValue: isActive ? 1.2 : 1,
+      tension: 150,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  // Efecto para animar los iconos cuando cambia el tab activo
+  useEffect(() => {
+    tabs.forEach((tab) => {
+      const isActive = activeTab === tab;
+      animateIconScale(tab, isActive);
+    });
+  }, [activeTab]);
+
+  // Función para manejar el cambio de tab
+  const handleTabChange = (tabName) => {
+    setActiveTab(tabName);
+  };
 
   // Función para renderizar iconos SVG
   const renderIcon = (tabName, isActive) => {
     const iconColor = isActive ? colors.tabActive : colors.tabInactive;
-    const iconSize = 28;
+    const iconSize = isActive ? 34 : 28;
 
     switch (tabName) {
       case 'Home':
@@ -251,6 +388,14 @@ export default function HomeScreen({ user, onLogout }) {
       {renderContent()}
 
       <View style={styles.tabBar}>
+        <Animated.View
+          style={[
+            styles.indicator,
+            {
+              transform: [{ translateX: indicatorPosition }],
+            },
+          ]}
+        />
         {tabs.map((tab, index) => {
           const isActive = activeTab === tab;
           // Colocar el botón circular en el centro (después de Límite, antes de Recompensas)
@@ -262,13 +407,20 @@ export default function HomeScreen({ user, onLogout }) {
               <React.Fragment key={`fragment-${tab}`}>
                 <TouchableOpacity
                   key={tab}
-                  style={[
-                    styles.tab,
-                    isActive && styles.activeTab,
-                  ]}
-                  onPress={() => setActiveTab(tab)}
+                  style={styles.tab}
+                  onPress={() => handleTabChange(tab)}
+                  onLayout={(event) => {
+                    const { x, width } = event.nativeEvent.layout;
+                    saveTabPosition(tab, x, width);
+                  }}
                 >
-                  {renderIcon(tab, isActive)}
+                  <Animated.View
+                    style={{
+                      transform: [{ scale: getIconScale(tab) }],
+                    }}
+                  >
+                    {renderIcon(tab, isActive)}
+                  </Animated.View>
                 </TouchableOpacity>
                 {/* Botón circular para agregar gasto */}
                 <TouchableOpacity
@@ -284,13 +436,20 @@ export default function HomeScreen({ user, onLogout }) {
           return (
             <TouchableOpacity
               key={tab}
-              style={[
-                styles.tab,
-                isActive && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab(tab)}
+              style={styles.tab}
+              onPress={() => handleTabChange(tab)}
+              onLayout={(event) => {
+                const { x, width } = event.nativeEvent.layout;
+                saveTabPosition(tab, x, width);
+              }}
             >
-              {renderIcon(tab, isActive)}
+              <Animated.View
+                style={{
+                  transform: [{ scale: getIconScale(tab) }],
+                }}
+              >
+                {renderIcon(tab, isActive)}
+              </Animated.View>
             </TouchableOpacity>
           );
         })}
@@ -443,6 +602,16 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     alignItems: 'center',
     justifyContent: 'space-around',
+    position: 'relative',
+  },
+  indicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 40,
+    height: 3,
+    backgroundColor: colors.tabActive,
+    borderRadius: 2,
   },
   tab: {
     flex: 1,
@@ -450,10 +619,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     minWidth: 0,
-  },
-  activeTab: {
-    borderTopWidth: 3,
-    borderTopColor: colors.tabActive,
   },
   addButtonCircle: {
     width: 56,

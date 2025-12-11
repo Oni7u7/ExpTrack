@@ -12,7 +12,7 @@ import {
 import { getRecompensas, addRecompensa } from '../services/recompensasService';
 import { colors } from '../config/colors';
 
-export default function RecompensasTab({ userId, onAvatarUpdated }) {
+export default function RecompensasTab({ userId, onAvatarUpdated, avatarSeleccionado }) {
   const [recompensas, setRecompensas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,10 +39,34 @@ export default function RecompensasTab({ userId, onAvatarUpdated }) {
     { 
       id: 'avatar_ellen-joe', 
       nombre: 'Avatar Ellen Joe', 
-      puntos: 120, 
+      puntos: 100, 
       tipo: 'avatar', 
       descripcion: 'Imagen de perfil personalizada',
       imagen: require('../assets/images/ellen-zzz.png')
+    },
+    {
+      id: 'avatar_GI',
+      nombre: 'Avatar Chico GI',
+      puntos: 50,
+      tipo: 'avatar',
+      descripcion: 'Imagen de perfil personalizada',
+      imagen: require('../assets/images/gi.jpeg')
+    },
+    {
+      id: 'avatar_Yuji',
+      nombre: 'Avatar Yuji',
+      puntos: 50,
+      tipo: 'avatar',
+      descripcion: 'Imagen de perfil personalizada',
+      imagen: require('../assets/images/yuji.jpeg')
+    },
+    {
+      id: 'avatar_ellen Chibi',
+      nombre: 'Avatar Chibi',
+      puntos: 30,
+      tipo: 'avatar',
+      descripcion: 'Imagen de perfil personalizada',
+      imagen: require('../assets/images/elenchibi.jpeg')
     },
   ];
 
@@ -140,8 +164,9 @@ export default function RecompensasTab({ userId, onAvatarUpdated }) {
                 Alert.alert('¡Desbloqueado!', `Has desbloqueado "${item.nombre}".`);
                 loadRecompensas();
                 // Notificar que el avatar se actualizó (si es un avatar)
+                // Pasar el ID del avatar para que se seleccione automáticamente
                 if (item.tipo === 'avatar' && onAvatarUpdated) {
-                  onAvatarUpdated();
+                  onAvatarUpdated(item.id);
                 }
               }
             } catch (err) {
@@ -151,6 +176,13 @@ export default function RecompensasTab({ userId, onAvatarUpdated }) {
         },
       ]
     );
+  };
+
+  const seleccionarAvatar = (item) => {
+    if (item.tipo === 'avatar' && onAvatarUpdated) {
+      onAvatarUpdated(item.id);
+      Alert.alert('Avatar Seleccionado', `Has seleccionado "${item.nombre}" como tu avatar.`);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -218,48 +250,70 @@ export default function RecompensasTab({ userId, onAvatarUpdated }) {
             const desbloqueado = isItemDesbloqueado(item.id);
             const puntosDisponibles = puntosTotales - getPuntosGastados();
             const puedeComprar = puntosDisponibles >= item.puntos;
+            const estaSeleccionado = item.tipo === 'avatar' && avatarSeleccionado === item.id;
             
             return (
-              <TouchableOpacity
+              <View
                 key={item.id}
                 style={[
                   styles.itemCard,
                   desbloqueado && styles.itemCardDesbloqueado,
                   !puedeComprar && !desbloqueado && styles.itemCardBloqueado,
+                  estaSeleccionado && styles.itemCardSeleccionado,
                 ]}
-                onPress={() => !desbloqueado && desbloquearItem(item)}
-                disabled={desbloqueado}
               >
-                <View style={styles.itemHeader}>
-                  {item.imagen && (
-                    <Image 
-                      source={item.imagen} 
-                      style={styles.itemImagen}
-                      resizeMode="contain"
-                    />
-                  )}
-                  <View style={styles.itemInfo}>
-                    <Text style={styles.itemNombre}>{item.nombre}</Text>
-                    <Text style={styles.itemDescripcion}>{item.descripcion}</Text>
+                <TouchableOpacity
+                  onPress={() => !desbloqueado && desbloquearItem(item)}
+                  disabled={desbloqueado}
+                  style={styles.itemContent}
+                >
+                  <View style={styles.itemHeader}>
+                    {item.imagen && (
+                      <Image 
+                        source={item.imagen} 
+                        style={styles.itemImagen}
+                        resizeMode="contain"
+                      />
+                    )}
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemNombre}>{item.nombre}</Text>
+                      <Text style={styles.itemDescripcion}>{item.descripcion}</Text>
+                    </View>
+                    <View style={styles.itemPuntos}>
+                      {desbloqueado ? (
+                        <Text style={styles.itemDesbloqueadoText}>✓</Text>
+                      ) : (
+                        <>
+                          <Text style={styles.itemPuntosValue}>{item.puntos}</Text>
+                          <Text style={styles.itemPuntosLabel}>pts</Text>
+                        </>
+                      )}
+                    </View>
                   </View>
-                  <View style={styles.itemPuntos}>
-                    {desbloqueado ? (
-                      <Text style={styles.itemDesbloqueadoText}>✓</Text>
+                </TouchableOpacity>
+                {desbloqueado && item.tipo === 'avatar' && (
+                  <View style={styles.itemActions}>
+                    {estaSeleccionado ? (
+                      <View style={styles.seleccionadoBadge}>
+                        <Text style={styles.seleccionadoText}>✓ Seleccionado</Text>
+                      </View>
                     ) : (
-                      <>
-                        <Text style={styles.itemPuntosValue}>{item.puntos}</Text>
-                        <Text style={styles.itemPuntosLabel}>pts</Text>
-                      </>
+                      <TouchableOpacity
+                        style={styles.seleccionarButton}
+                        onPress={() => seleccionarAvatar(item)}
+                      >
+                        <Text style={styles.seleccionarButtonText}>Seleccionar</Text>
+                      </TouchableOpacity>
                     )}
                   </View>
-                </View>
-                {desbloqueado && (
+                )}
+                {desbloqueado && item.tipo !== 'avatar' && (
                   <Text style={styles.itemEstado}>Desbloqueado</Text>
                 )}
                 {!puedeComprar && !desbloqueado && (
                   <Text style={styles.itemEstado}>Puntos insuficientes</Text>
                 )}
-              </TouchableOpacity>
+              </View>
             );
           })}
         </View>
@@ -497,6 +551,39 @@ const styles = StyleSheet.create({
   },
   itemCardBloqueado: {
     opacity: 0.6,
+  },
+  itemCardSeleccionado: {
+    borderColor: colors.buttonPrimary,
+    borderWidth: 3,
+  },
+  itemContent: {
+    flex: 1,
+  },
+  itemActions: {
+    marginTop: 12,
+    alignItems: 'flex-end',
+  },
+  seleccionarButton: {
+    backgroundColor: colors.buttonPrimary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  seleccionarButtonText: {
+    color: colors.buttonPrimaryText,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  seleccionadoBadge: {
+    backgroundColor: colors.success,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  seleccionadoText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   itemHeader: {
     flexDirection: 'row',

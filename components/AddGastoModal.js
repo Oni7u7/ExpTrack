@@ -34,10 +34,10 @@ const CATEGORIAS_PREDEFINIDAS = [
 export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }) {
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [categoriaId, setCategoriaId] = useState(null);
+  const [categoriaId, setCategoriaId] = useState(CATEGORIAS_PREDEFINIDAS[0]?.id || null);
   const [fecha, setFecha] = useState(formatDateLocal(new Date()));
   const [loading, setLoading] = useState(false);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [categoriasMap, setCategoriasMap] = useState({});
 
   useEffect(() => {
@@ -46,8 +46,10 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
       // Resetear formulario cuando se abre
       setMonto('');
       setDescripcion('');
-      setCategoriaId(null);
+      // Inicializar con la primera categoría por defecto
+      setCategoriaId(CATEGORIAS_PREDEFINIDAS[0]?.id || null);
       setFecha(formatDateLocal(new Date()));
+      setShowCategoryDropdown(false);
     }
   }, [visible, userId]);
 
@@ -85,6 +87,11 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
   const handleSubmit = async () => {
     if (!monto || parseFloat(monto) <= 0) {
       Alert.alert('Error', 'Por favor ingresa un monto válido');
+      return;
+    }
+
+    if (!categoriaId) {
+      Alert.alert('Error', 'Por favor selecciona una categoría');
       return;
     }
 
@@ -142,13 +149,14 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
           '⚠️ Límite Excedido',
           'Has superado el límite de gastos establecido. Te recomendamos revisar tus gastos y ajustar tu presupuesto.',
           [
-            {
+              {
               text: 'Entendido',
               onPress: () => {
                 setMonto('');
                 setDescripcion('');
-                setCategoriaId(null);
+                setCategoriaId(CATEGORIAS_PREDEFINIDAS[0]?.id || null);
                 setFecha(formatDateLocal(new Date()));
+                setShowCategoryDropdown(false);
                 onClose();
                 if (onGastoAdded) {
                   onGastoAdded();
@@ -164,8 +172,9 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
             onPress: () => {
               setMonto('');
               setDescripcion('');
-              setCategoriaId(null);
-              setFecha(new Date().toISOString().split('T')[0]);
+              setCategoriaId(CATEGORIAS_PREDEFINIDAS[0]?.id || null);
+              setFecha(formatDateLocal(new Date()));
+              setShowCategoryDropdown(false);
               onClose();
               if (onGastoAdded) {
                 onGastoAdded();
@@ -180,8 +189,9 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
   const handleClose = () => {
     setMonto('');
     setDescripcion('');
-    setCategoriaId(null);
+    setCategoriaId(CATEGORIAS_PREDEFINIDAS[0]?.id || null);
     setFecha(formatDateLocal(new Date()));
+    setShowCategoryDropdown(false);
     onClose();
   };
 
@@ -211,47 +221,32 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
                 keyboardType="decimal-pad"
               />
 
-              <Text style={styles.label}>Categoría</Text>
+              <Text style={styles.label}>Categoría *</Text>
               <View style={styles.categoryContainer}>
                 <TouchableOpacity
                   style={styles.categoryButton}
                   onPress={() => {
-                    setShowCategoryModal(!showCategoryModal);
+                    setShowCategoryDropdown(!showCategoryDropdown);
                   }}
+                  activeOpacity={0.7}
                 >
                   <Text style={styles.categoryButtonText}>
                     {categoriaId
-                      ? CATEGORIAS_PREDEFINIDAS.find(c => c.id === categoriaId)?.nombre || 'Sin categoría'
-                      : 'Sin categoría'}
+                      ? CATEGORIAS_PREDEFINIDAS.find(c => c.id === categoriaId)?.nombre || 'Selecciona una categoría'
+                      : 'Selecciona una categoría'}
                   </Text>
                   <Text style={styles.categoryButtonArrow}>
-                    {showCategoryModal ? '▲' : '▼'}
+                    {showCategoryDropdown ? '▲' : '▼'}
                   </Text>
                 </TouchableOpacity>
                 
-                {showCategoryModal && (
+                {showCategoryDropdown && (
                   <View style={styles.categoryDropdown}>
                     <ScrollView
                       style={styles.categoryDropdownScroll}
                       nestedScrollEnabled={true}
+                      showsVerticalScrollIndicator={true}
                     >
-                      <TouchableOpacity
-                        style={[
-                          styles.categoryOption,
-                          !categoriaId && styles.categoryOptionSelected
-                        ]}
-                        onPress={() => {
-                          setCategoriaId(null);
-                          setShowCategoryModal(false);
-                        }}
-                      >
-                        <Text style={[
-                          styles.categoryOptionText,
-                          !categoriaId && styles.categoryOptionTextSelected
-                        ]}>
-                          Sin categoría
-                        </Text>
-                      </TouchableOpacity>
                       {CATEGORIAS_PREDEFINIDAS.map((cat) => (
                         <TouchableOpacity
                           key={cat.id}
@@ -261,8 +256,9 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
                           ]}
                           onPress={() => {
                             setCategoriaId(cat.id);
-                            setShowCategoryModal(false);
+                            setShowCategoryDropdown(false);
                           }}
+                          activeOpacity={0.7}
                         >
                           <Text style={[
                             styles.categoryOptionText,
@@ -270,6 +266,9 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
                           ]}>
                             {cat.nombre}
                           </Text>
+                          {categoriaId === cat.id && (
+                            <Text style={styles.categoryCheckmark}>✓</Text>
+                          )}
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
@@ -312,71 +311,6 @@ export default function AddGastoModal({ userId, visible, onClose, onGastoAdded }
                   </Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Modal para seleccionar categoría */}
-      <Modal
-        visible={showCategoryModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCategoryModal(false)}
-      >
-        <View style={styles.categoryModalOverlay}>
-          <TouchableOpacity
-            style={styles.categoryModalBackdrop}
-            activeOpacity={1}
-            onPress={() => setShowCategoryModal(false)}
-          />
-          <View 
-            style={styles.categoryModalContent}
-            onStartShouldSetResponder={() => true}
-            onResponderGrant={() => {}}
-          >
-            <Text style={styles.categoryModalTitle}>Seleccionar Categoría</Text>
-            <ScrollView
-              showsVerticalScrollIndicator={true}
-              style={styles.categoryModalScroll}
-            >
-              <TouchableOpacity
-                style={[
-                  styles.categoryOption,
-                  !categoriaId && styles.categoryOptionSelected
-                ]}
-                onPress={() => {
-                  setCategoriaId(null);
-                  setShowCategoryModal(false);
-                }}
-              >
-                <Text style={[
-                  styles.categoryOptionText,
-                  !categoriaId && styles.categoryOptionTextSelected
-                ]}>
-                  Sin categoría
-                </Text>
-              </TouchableOpacity>
-              {CATEGORIAS_PREDEFINIDAS.map((cat) => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.categoryOption,
-                    categoriaId === cat.id && styles.categoryOptionSelected
-                  ]}
-                  onPress={() => {
-                    setCategoriaId(cat.id);
-                    setShowCategoryModal(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.categoryOptionText,
-                    categoriaId === cat.id && styles.categoryOptionTextSelected
-                  ]}>
-                    {cat.nombre}
-                  </Text>
-                </TouchableOpacity>
-              ))}
             </ScrollView>
           </View>
         </View>
@@ -476,59 +410,34 @@ const styles = StyleSheet.create({
   categoryDropdownScroll: {
     maxHeight: 200,
   },
-  categoryModalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categoryModalBackdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  categoryModalContent: {
-    backgroundColor: colors.cardBackground,
-    borderRadius: 12,
-    width: '80%',
-    maxWidth: 400,
-    maxHeight: '70%',
-    padding: 20,
-    shadowColor: colors['900'],
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
-    zIndex: 1000,
-  },
-  categoryModalScroll: {
-    maxHeight: 300,
-  },
-  categoryModalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
   categoryOption: {
     padding: 14,
     borderRadius: 8,
-    marginBottom: 8,
+    marginBottom: 4,
     backgroundColor: colors.backgroundSecondary,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   categoryOptionSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '20',
+    borderWidth: 1,
+    borderColor: colors.primary,
   },
   categoryOptionText: {
     fontSize: 16,
     color: colors.textPrimary,
+    flex: 1,
   },
   categoryOptionTextSelected: {
-    color: colors.buttonPrimaryText,
+    color: colors.primary,
     fontWeight: '600',
+  },
+  categoryCheckmark: {
+    fontSize: 18,
+    color: colors.primary,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   modalButtons: {
     flexDirection: 'row',

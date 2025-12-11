@@ -7,6 +7,8 @@ import {
   TextInput,
   TouchableOpacity,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { getLimiteActual, getAllLimites, setLimite, updateGastoTotal } from '../services/limitesService';
 import { getGastosByDateRange } from '../services/gastosService';
@@ -238,8 +240,19 @@ export default function LimiteTab({ userId }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Text style={styles.title}>Límite de Gastos</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title}>Límite de Gastos</Text>
 
       {limites.length > 0 ? (
         limites.map((limite) => {
@@ -392,7 +405,8 @@ export default function LimiteTab({ userId }) {
           </View>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
